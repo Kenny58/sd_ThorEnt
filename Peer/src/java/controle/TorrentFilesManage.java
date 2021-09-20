@@ -10,8 +10,12 @@ import Modelo.ArquivoDownload;
 import Modelo.DownloadFile;
 import Modelo.Listas;
 import Modelo.PeerModelo;
+import aplicacao.TelaLog;
+import com.google.common.base.Function;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -25,6 +29,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import javax.swing.JOptionPane;
 import static javax.swing.text.html.FormSubmitEvent.MethodType.POST;
 
@@ -275,5 +280,107 @@ public class TorrentFilesManage {
         listaArquivo = new Gson().fromJson(new Conexao().conectaWebService(url, null, "GET"), listTypeArquivo);
         return listaArquivo;
     }
+
+    public void receiveFile(List<PeerModelo> peers, TelaLog telaLog, int jj, int ii, int tamanho_bloco, int tamanho_vetor, int[] vetor_principal, String hashArquivo){
+        peers.get(jj).setDisponibilidade(false);
+        int inicio_bloco = ii;
+        telaLog.logArea.append("Peer escolhido " + peers.get(jj).getIp() + ": pacote " + inicio_bloco);
+        System.out.println("Peer escolhido " + peers.get(jj).getIp() + ": pacote " + inicio_bloco);
+        ArquivoDownload arquivoDownload = new ArquivoDownload();
+        String url = "http://"+peers.get(jj).getIp()+":8080/Peer/webresources/peer/download/"+tamanho_bloco+"/"+inicio_bloco+"/"+hashArquivo;
+        try{
+            String jsonDownload = new Conexao().conectaWebService(url, null, "GET");
+            if(!jsonDownload.equals(null)){
+                arquivoDownload = new Gson().fromJson(jsonDownload, ArquivoDownload.class);
+                peers.get(jj).setDisponibilidade(true);
+
+                byte[] vetor_menor = new byte[arquivoDownload.getVetor().length];
+                vetor_menor = arquivoDownload.getVetor();
+                String hash = new TorrentFilesManage().getHashCode(vetor_menor);
+                if(hash.equals(arquivoDownload.getHash())){
+                    telaLog.logArea.append("hash vetor ok: pacote " + inicio_bloco);
+                    System.out.println("hash vetor ok: pacote " + inicio_bloco);
+                    for(int k = 0; k < vetor_menor.length; k++){
+                        if(inicio_bloco < tamanho_vetor){
+                            vetor_principal[inicio_bloco] = vetor_menor[k];
+                            inicio_bloco++;
+                        }
+                    }
+                    //i += vetor_menor.length;
+                }else{
+                    System.out.println("not");
+                    for(int k = 0; k < vetor_menor.length; k++){
+                        if(inicio_bloco < tamanho_vetor){
+                            vetor_principal[inicio_bloco] = -200;
+                            inicio_bloco++;
+                        }
+                    }
+                    //i = inicio_bloco;
+                }
+            }else{
+                peers.get(jj).setDisponibilidade(false);
+            }
+        }catch(JsonSyntaxException | NoSuchAlgorithmException erro){
+            System.out.println("Erro na thread: " + erro.getMessage());
+        }
+    }
+    public void configThread(Arquivo arquivo, TelaLog telaLog, List<Thread> listaThreads, List<PeerModelo> peers, int i, int j, int tamanho_bloco, int tamanho_vetor, int[] vetor_principal) {
+        int ii = i;
+        i += tamanho_bloco;
+        int jj = j;
+        String hashArquivo = arquivo.getHashArquivo();
+        String nome = arquivo.getNome();
+        Thread thread = new Thread(() -> receiveFile(peers, telaLog, jj, ii, tamanho_bloco, tamanho_vetor, vetor_principal,hashArquivo));
+        listaThreads.add(thread);
+        thread.start();
+        }
+
+    public void spawnThreads(int[] vetor_principal, TelaLog telaLog, int l, int tamanho_bloco, int tamanho_vetor, int numero_peers, List<PeerModelo> peers, List<Thread> listaThreads, Arquivo arquivo,Consumer<Integer> progressCallBack){
+        int progress = 0;
+        for(int i = 0; i < vetor_principal.length; i++){
+            if(vetor_principal[i] < -128 || vetor_principal[i] > 127) {
+                for (int j = 0; j < numero_peers; j++) {
+                    if (peers.get(j).getDisponibilidade()) {
+                        configThread(arquivo, telaLog, listaThreads, peers, i, j, tamanho_bloco, tamanho_vetor, vetor_principal);
+                    } else {
+                        awaitUntilAvailable(l, j, peers);
+                    }
+                }
+                i--;
+            }
+            progress++;
+            progressCallBack.accept(progress);
+        }
+    }
+
+   public void clearThreads(List<Thread> listaThreads, TelaLog telaLog){
+        int indice = listaThreads.size();
+        while(indice > 0){
+            for(int i = 0; i < listaThreads.size(); i++){
+                if(!listaThreads.get(i).isAlive()){
+                    listaThreads.remove(listaThreads.get(i));
+                    indice--;
+                    telaLog.logArea.append("Threads abertas: " + indice);
+                    System.out.println("Threads abertas: " + indice);
+                }
+            }
+        }
+    }
+
+
+    public void awaitUntilAvailable(int l, int j, List<PeerModelo> peers){
+        l = j;
+        while(!peers.get(l).getDisponibilidade()){
+            //System.out.println("peer off " + peers.get(l).getIp());updateProgress
+            l++;
+            if(l >= peers.size()){
+                //System.out.println("recomeça lista de peers...");
+                l = 0;
+            }
+        }
+        j = l - 1;
+    }
+
+
     
 }

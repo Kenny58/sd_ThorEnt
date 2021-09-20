@@ -52,4 +52,15 @@ public class Arquivo {
     public int getTamanhoVetor(){
         return tamanhoVetor;
     }
+
+    public List<PeerModelo> buildPeerList(List<PeerModelo> peers){
+
+        for(int i = 0; i < getPeer().size(); i ++){
+            PeerModelo peer = new PeerModelo();
+            peer.setIp(getPeer().get(i));
+            peer.setDisponibilidade(true);
+            peers.add(peer);
+        }
+        return peers;
+    }
 }

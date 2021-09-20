@@ -5,6 +5,13 @@
  */
 package Controle;
 
+import Modelo.Arquivo;
+import aplicacao.TelaLista;
+import aplicacao.TelaLog;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /**
  *
  * @author Raphael Felipe
@@ -42,6 +49,36 @@ public class DownloadFile {
 
     public void setPort(String port) {
         this.port = port;
+    }
+
+   public void saveDownloadFile(int[] vetor_principal, Arquivo arquivo, TelaLog telaLog){
+        byte[] vetor_final = new byte[vetor_principal.length];
+
+        for(int i = 0; i < vetor_principal.length; i++){
+            vetor_final[i] = (byte) vetor_principal[i];
+        }
+        telaLog.logArea.append("verificando...");
+        System.out.println("verificando...");
+        try {
+            if(new TorrentFilesManage().getHashCode(vetor_final).equals(arquivo.getHashArquivo())){
+                new TorrentFilesManage().createFileFromByteArray("C://ThorEnt//" + arquivo.getNome(), vetor_final);
+                System.out.println("ok");
+                System.out.println("salvo!");
+            }else{
+                telaLog.logArea.append("Hash incorreto");
+                telaLog.logArea.append("Hash esperado: " + arquivo.getHashArquivo());
+                telaLog.logArea.append("Hash do arquivo baixado: " + new TorrentFilesManage().getHashCode(vetor_final));
+                System.out.println("Hash incorreto");
+                System.out.println("Hash esperado: " + arquivo.getHashArquivo());
+                System.out.println("Hash do arquivo baixado: " + new TorrentFilesManage().getHashCode(vetor_final));
+            }
+            //new TorrentFilesManage().createFileFromByteArray("C://ThorEnt//testando.jpg", vetor_final);
+        } catch (Exception ex) {
+            telaLog.logArea.append("Salvar arquivo: " + ex.getMessage());
+            System.out.println("Salvar arquivo: " + ex.getMessage());
+            Logger.getLogger(TelaLista.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
     }
     
 }
