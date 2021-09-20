@@ -267,12 +267,8 @@ public class TelaLista extends javax.swing.JPanel {
         for(int i = 0; i < vetor_principal.length; i++){
             vetor_principal[i] = 200;
         }
-        telaLog.logArea.append("fazendo download...\n");
-        telaLog.logArea.append("Arquivo: " + arquivo.getNome());
-        telaLog.logArea.append("Tamanho: " + arquivo.getTamanhoArquivo());
-        System.out.println("fazendo download...\n");
-        System.out.println("Arquivo: " + arquivo.getNome());
-        System.out.println("Tamanho: " + arquivo.getTamanhoArquivo());
+
+        printScreenLog(arquivo);
 
         spawnThreads(vetor_principal, l, tamanho_bloco, tamanho_vetor,numero_peers, peers,listaThreads,arquivo,progress);
 
@@ -288,7 +284,13 @@ public class TelaLista extends javax.swing.JPanel {
 
         }//GEN-LAST:event_btnDownloadMouseClicked
 
-        void saveDownloadFile(int[] vetor_principal, Arquivo arquivo){
+    void printScreenLog(Arquivo arquivo){
+        telaLog.logArea.append("fazendo download...\n");
+        telaLog.logArea.append("Arquivo: " + arquivo.getNome());
+        telaLog.logArea.append("Tamanho: " + arquivo.getTamanhoArquivo());
+    }
+
+    void saveDownloadFile(int[] vetor_principal, Arquivo arquivo){
             byte[] vetor_final = new byte[vetor_principal.length];
 
             for(int i = 0; i < vetor_principal.length; i++){
